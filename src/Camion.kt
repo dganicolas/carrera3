@@ -6,7 +6,8 @@ class Camion(
     nombre:String,
     capacidadCombustible:Float,
     combustibleActual:Float,
-    kilometrosActuales:Float
+    kilometrosActuales:Float,
+    var Mma:Float
 ): Vehiculo(nombre, "", "", capacidadCombustible, combustibleActual, kilometrosActuales) {
-
+    override fun calcularAutonomia(): Float = (combustibleActual * (KM_POR_LITRO - (1 - (Mma/1000)))).redondear(2)
 }
