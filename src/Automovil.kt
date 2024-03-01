@@ -4,7 +4,7 @@
  * @property esHibrido Indica si el automóvil es eléctrico (true) o no (false).
  * @constructor Crea un automóvil con los parámetros especificados, heredando propiedades y funcionalidades de [Vehiculo].
  */
-class Automovil(
+open class Automovil(
     nombre: String,
     marca: String,
     modelo: String,
