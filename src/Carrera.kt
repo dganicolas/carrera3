@@ -11,11 +11,10 @@ import kotlin.math.ceil
 class Carrera(
     val nombreCarrera: String,
     private val distanciaTotal: Float,
-    private val participantes: List<Vehiculo> = listOf()
+    private var participantes: List<Vehiculo> = listOf()
 ) {
     private val historialAcciones = mutableMapOf<String, MutableList<String>>()
     private var estadoCarrera = false // Indica si la carrera está en curso o ha finalizado.
-    private val posiciones = mutableMapOf<String, Float>()
 
     init {
         require(distanciaTotal >= 1000) { "La distancia total de la carrera debe ser al menos 1000 km." }
@@ -23,6 +22,8 @@ class Carrera(
     }
 
     companion object {
+        private var unaVez = 0
+        private var GANADOR= ""
         private const val KM_PARA_FILIGRANA = 20f // Cada 20 km, se realiza una filigrana.
     }
 
@@ -54,7 +55,7 @@ class Carrera(
      * distancia total, participantes, estado actual, historial de acciones y posiciones de los vehículos participantes.
      */
     override fun toString(): String {
-        return "NombreCarrera: $nombreCarrera, DistanciaTotal: $distanciaTotal, Participantes: $participantes, EstadoCarrera: $estadoCarrera, HistorialAcciones: $historialAcciones, Posiciones: $posiciones." }
+        return "NombreCarrera: $nombreCarrera, DistanciaTotal: $distanciaTotal, Participantes: $participantes, EstadoCarrera: $estadoCarrera, HistorialAcciones: $historialAcciones."}
 
     /**
      * Inicializa los datos de un participante en la carrera, preparando su historial de acciones y estableciendo
@@ -64,7 +65,6 @@ class Carrera(
      */
     private fun inicializaDatosParticipante(vehiculo: Vehiculo) {
         historialAcciones[vehiculo.nombre] = mutableListOf()
-        posiciones[vehiculo.nombre] = 0f
     }
 
     /**
@@ -73,13 +73,18 @@ class Carrera(
      */
     fun iniciarCarrera() {
         println("¡Comienza la carrera!")
-
+        var contador = 0
         estadoCarrera = true // Indica que la carrera está en curso.
         while (estadoCarrera) {
 
-            Thread.sleep(100)
-            print(".")
-
+            if (contador % 5 == 0){
+                println("*** CLASIFICACIÓN PARCIAL (ronda $contador) ***")
+                for (i in participantes){
+                    println("*. ${i.nombre} $i(km = ${i.kilometrosActuales}, combustible = ${i.combustibleActual} L")
+                }
+                Thread.sleep(500)
+            }
+            contador+= 1
             val vehiculoSeleccionado = seleccionaVehiculoQueAvanzara()
             avanzarVehiculo(vehiculoSeleccionado)
 
@@ -147,12 +152,12 @@ class Carrera(
 
             avanzarTramo(vehiculo, distanciaDeTramo)
             distanciaRestanteEnAvance -= distanciaDeTramo
-            repeat(2) { realizarFiligrana(vehiculo) }
+            repeat((0..3).random()) { realizarFiligrana(vehiculo) }
         }
 
         registrarAccion(vehiculo.nombre, "Finaliza viaje: Total Recorrido $distanciaTotalEnAvance kms (${vehiculo.kilometrosActuales} kms y ${vehiculo.combustibleActual} L actuales)")
 
-        actualizarPosiciones(vehiculo.nombre, distanciaTotalEnAvance)
+        actualizarPosiciones()
     }
 
     /**
@@ -169,7 +174,8 @@ class Carrera(
 
         // Si le queda alguna distancia por recorrer debe repostar
         while (distanciaRestante > 0) {
-            val repostado = vehiculo.repostar() // Llenamos el tanque
+            val repostado = vehiculo.repostar(0f, vehiculo) // Llenamos el tanque
+            vehiculo.paradas += 1
             registrarAccion(vehiculo.nombre, "Repostaje tramo: $repostado L")
 
             // Necesitamos de nuevo una distancia para después compararla con la distanciaRestante que devuelve realizarViaje()
@@ -198,13 +204,24 @@ class Carrera(
         // Lógica para realizar filigranas de motociletas y automovil y registrarlas. Se hará o no aleatoriamente.
         if (comprobarSiTocaHacerFiligrana()) {
             val combustibleRestante: Float
-
+            var kmPerdidos = (10..50).random()
+            if ((1..5).random() < 3){
+                kmPerdidos = 10
+            }
             if (vehiculo is Automovil) {
                 combustibleRestante = vehiculo.realizaDerrape()
-                registrarAccion(vehiculo.nombre, "Derrape: Combustible restante $combustibleRestante L.")
+                registrarAccion(vehiculo.nombre, "Derrape: Combustible restante $combustibleRestante L, KM perdidos: -$kmPerdidos.")
+                vehiculo.kilometrosActuales -=kmPerdidos
+                if (vehiculo.kilometrosActuales < 0f){
+                    vehiculo.kilometrosActuales = 0f
+                }
             } else if (vehiculo is Motocicleta) {
                 combustibleRestante = vehiculo.realizaCaballito()
-                registrarAccion(vehiculo.nombre, "Caballito: Combustible restante $combustibleRestante L")
+                registrarAccion(vehiculo.nombre, "Caballito: Combustible restante $combustibleRestante L, KM perdidos: -$kmPerdidos.")
+                vehiculo.kilometrosActuales -=kmPerdidos
+                if (vehiculo.kilometrosActuales < 0f){
+                    vehiculo.kilometrosActuales = 0f
+                }
             }
         }
     }
@@ -216,9 +233,10 @@ class Carrera(
      * @param nombreVehiculo El nombre del [Vehiculo] cuya posición se actualizará.
      * @param kilometraje La distancia recorrida en el último tramo.
      */
-    private fun actualizarPosiciones(nombreVehiculo: String, kilometraje: Float) {
-        val kilometrosRecorridos = posiciones[nombreVehiculo] ?: 0f
-        posiciones[nombreVehiculo] = kilometrosRecorridos + kilometraje
+    private fun actualizarPosiciones() {
+        //val kilometrosRecorridos = posiciones[nombreVehiculo] ?: 0f
+        //posiciones[nombreVehiculo] = kilometrosRecorridos + kilometraje
+        participantes = participantes.sortedByDescending { it.kilometrosActuales }
     }
 
     /**
@@ -228,11 +246,24 @@ class Carrera(
      * @return El [Vehiculo] ganador, si existe; de lo contrario, devuelve null.
      */
     private fun determinarGanador(): Vehiculo? {
-        val maxKilometros = posiciones.maxByOrNull { it.value }
+        val maxKilometros = participantes.maxByOrNull { it.kilometrosActuales }
         var ganador: Vehiculo? = null
-
-        if ((maxKilometros?.value ?: 0f) >= distanciaTotal)
-            ganador = participantes.find { it.nombre == maxKilometros?.key }
+        var primero: Vehiculo?
+        var contador=0
+        if ((maxKilometros?.kilometrosActuales ?: 0f) >= distanciaTotal){
+            if ((maxKilometros?.kilometrosActuales ?: 0f) >= distanciaTotal && unaVez == 0) {
+                primero = maxKilometros
+                GANADOR = (primero?.nombre).toString()
+                unaVez = 2
+            }
+            for (vehiculo in participantes){
+                if(vehiculo.kilometrosActuales == distanciaTotal){
+                    contador++
+                }
+            }
+            if (contador == participantes.size){
+            ganador = participantes.find { it.nombre == GANADOR }
+            }}
 
         return ganador
     }
@@ -256,19 +287,15 @@ class Carrera(
      */
     fun obtenerResultados(): List<ResultadoCarrera> {
         val resultados = mutableListOf<ResultadoCarrera>()
-
-        posiciones.toList().sortedByDescending { it.second }.forEachIndexed { posicion, (nombre, kilometraje) ->
-            val vehiculo = participantes.find { it.nombre == nombre }
-            val paradasRepostaje = historialAcciones[nombre]?.count { it.contains("Repostaje") } ?: 0
-            val historial = historialAcciones[nombre] ?: emptyList()
-
-            if (vehiculo != null)
+        var posicion = 0
+        participantes.sortedByDescending { it.kilometrosActuales }.forEach {
+            val historial = historialAcciones[it.nombre] ?: emptyList()
                 resultados.add(
                     ResultadoCarrera(
-                        vehiculo,
+                        it,
                         posicion + 1,
-                        kilometraje,
-                        paradasRepostaje,
+                        it.kilometrosActuales,
+                        it.paradas,
                         historial
                     )
                 )

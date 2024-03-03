@@ -12,7 +12,7 @@ open class Automovil(
     combustibleActual: Float,
     kilometrosActuales: Float,
     private val esHibrido: Boolean
-) : Vehiculo(nombre, marca, modelo, capacidadCombustible, combustibleActual, kilometrosActuales) {
+) : Vehiculo(nombre, marca, modelo, capacidadCombustible, combustibleActual, kilometrosActuales,0) {
 
     companion object {
         const val AHORRO_ELECTRICO = 5.0f // Si es eléctrico, asume un rendimiento de 5 km más por litro.
@@ -81,6 +81,6 @@ open class Automovil(
      * @return Una cadena de texto que representa al automóvil.
      */
     override fun toString(): String {
-        return "Automovil(nombre=$nombre, marca=$marca, modelo=$modelo, capacidadCombustible=$capacidadCombustible, combustibleActual=$combustibleActual, kilometrosActuales=$kilometrosActuales, esElectrico=$esHibrido)"
+        return "Automovil"
     }
 }

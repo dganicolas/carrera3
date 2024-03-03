@@ -17,7 +17,8 @@ open class Vehiculo(
     protected val modelo: String,
     capacidadCombustible: Float,
     combustibleActual: Float,
-    var kilometrosActuales: Float
+    var kilometrosActuales: Float,
+    var paradas: Int
 ) {
 
     protected val capacidadCombustible = capacidadCombustible.redondear(2)
@@ -31,6 +32,7 @@ open class Vehiculo(
     init {
         require(capacidadCombustible > 0) { "La capacidad del tanque debe ser un valor positivo." }
         require(combustibleActual >= 0) { "El combustible actual no puede ser negativo." }
+        this.combustibleActual = capacidadCombustible * ((20..100).random()/100)
     }
 
     companion object {
@@ -108,14 +110,13 @@ open class Vehiculo(
      * tanque completamente.
      * @return La cantidad de combustible efectivamente repostada, como [Float].
      */
-    open fun repostar(cantidadARepostar: Float = 0f): Float {
+    open fun repostar(cantidadARepostar: Float = 0f,vehiculo: Vehiculo): Float {
         val combustiblePrevio = combustibleActual
 
         if (cantidadARepostar <= 0)
             combustibleActual = capacidadCombustible // LLENO
         else
             combustibleActual = minOf(capacidadCombustible, combustibleActual + cantidadARepostar)
-
         return combustibleActual - combustiblePrevio
     }
 }
